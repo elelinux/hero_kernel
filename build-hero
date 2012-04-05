@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Script to build for the htc_hero_kernel and zip the package.
+
+CCOMPILER=~/cm-ics/system/prebuilt/linux-x86/toolchain/arm-eabi-4.4.3/bin/arm-eabi-
+TYPE=cm-stock
+CONFIG=hero_defconfig
+
+cleanup()
+{
+    if [ -e ./releasetools/system/lib/modules ]; then
+        rm -f ./releasetools/system/lib/modules/*
+    fi
+    if [ -e ./releasetools/kernel/zImage ]; then
+        rm -f ./releasetools/kernel/zImage
+    fi
+}
+
+if [ -e ~/Skrivbord/kernel-cm9-hero-$TYPE-$(date +%d-%m-%Y).zip ]; then
+    rm -f ~/Skrivbord/kernel-cm9-hero-$TYPE-$(date +%d-%m-%Y).zip
+fi
+
+cleanup
+
+make ARCH=arm CROSS_COMPILE=$CCOMPILER mrproper
+make ARCH=arm CROSS_COMPILE=$CCOMPILER $CONFIG
+make ARCH=arm CROSS_COMPILE=$CCOMPILER -j`grep 'processor' /proc/cpuinfo | wc -l`
+
+if [ -e ./arch/arm/boot/zImage ]; then
+
+    mkdir -p ./releasetools/system/lib/modules
+
+    for i in `find ./ -name "*.ko"`; do
+        cp $i ./releasetools/system/lib/modules/
+    done
+
+    cp ./arch/arm/boot/zImage ./releasetools/kernel/
+
+    cd ./releasetools
+    zip -r ~/Skrivbord/kernel-cm9-hero-$TYPE-$(date +%d-%m-%Y) *
+    cd ..
+    cleanup
+    echo "Finished"
+else
+    cleanup
+    echo "Failed"
+fi
